@@ -214,6 +214,22 @@ class ExampleTest(BitcoinTestFramework):
             for block in peer_receiving.block_receive_map.values():
                 assert_equal(block, 1)
 
+        self.log.info("Getting node 1 to mine another block")
+        extra_block = int(self.nodes[1].generate(nblocks=1)[0], 16)
+
+        self.log.info("Node 2 should have not received the block yet")
+        peer_receiving.wait_until(lambda: peer_receiving.block_receive_map[extra_block] != 1, timeout=5)
+
+        self.log.info("Calling sync_all")
+        self.sync_all()
+        
+        self.log.info("Requesting block inventory from node 2")
+        extra_get_data = msg_getdata()
+        extra_get_data.inv.append(CInv(MSG_BLOCK, extra_block))
+        peer_receiving.send_message(extra_get_data)
+
+        self.log.info("Making sure the extra block was received by node 2")
+        peer_receiving.wait_until(lambda: peer_receiving.block_receive_map[extra_block] == 1, timeout=5)
 
 if __name__ == '__main__':
     ExampleTest().main()
